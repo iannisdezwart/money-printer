@@ -2,8 +2,9 @@ import Alpaca from "@alpacahq/alpaca-trade-api";
 import dotenv from "dotenv";
 import { AlgoEngine } from "./algo-engine/AlgoEngine";
 import { SimpleAlgo } from "./algo-engine/SimpleAlgo";
-import { MarketData } from "./market-data/MarketData";
-import { OrderManager } from "./order-manager/OrderManager";
+import { MarketDataService } from "./market-data/MarketDataService";
+import { OrderService } from "./orders/OrderService";
+import { AlpacaCryptoExchange } from "./orders/exchanges/alpaca-crypto/AlpacaCryptoExchange";
 import { PositionService } from "./positions/PositionService";
 
 dotenv.config();
@@ -21,13 +22,14 @@ const main = async () => {
   //   });
   //   console.log(assets);
 
-  const orderManager = await OrderManager.create(alpaca);
-  const marketData = await MarketData.create(alpaca, ["BTC/USD"]);
+  const alpacaCryptoExchange = await AlpacaCryptoExchange.create(alpaca);
+  const orderService = await OrderService.create([alpacaCryptoExchange]);
+  const marketDataService = await MarketDataService.create(alpaca, ["BTC/USD"]);
   const positionService = await PositionService.create(alpaca);
-  const algoEngine = new AlgoEngine(marketData, orderManager, positionService);
-  const algo = new SimpleAlgo();
+  const algoEngine = new AlgoEngine(marketDataService, orderService, positionService);
+  const simpleAlgo = new SimpleAlgo();
 
-  algoEngine.addAlgo(algo);
+  algoEngine.addAlgo(simpleAlgo);
   algoEngine.run();
 };
 

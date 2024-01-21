@@ -3,7 +3,7 @@ import { CryptoBar } from "@alpacahq/alpaca-trade-api/dist/resources/datav2/enti
 import { createWriteStream } from "fs";
 import { OrderBook, OrderBookUpdate } from "./OrderBook";
 
-export class MarketData {
+export class MarketDataService {
   private constructor(
     private alpaca: Alpaca,
     private orderBooks: Map<string, OrderBook>,
@@ -20,16 +20,16 @@ export class MarketData {
     });
   }
 
-  static async create(alpaca: Alpaca, symbols: string[]): Promise<MarketData> {
+  static async create(alpaca: Alpaca, symbols: string[]): Promise<MarketDataService> {
     const assets = await alpaca.getAssets({
       status: "active",
     });
     createWriteStream("assets.json").write(JSON.stringify(assets, null, 2));
 
-    const bars = await MarketData.fetchLatestBars(alpaca, symbols);
+    const bars = await MarketDataService.fetchLatestBars(alpaca, symbols);
     console.log("Bars", bars);
 
-    const inst = new MarketData(alpaca, new Map(), bars);
+    const inst = new MarketDataService(alpaca, new Map(), bars);
 
     return new Promise((resolve, reject) => {
       alpaca.crypto_stream_v1beta3.onConnect(() => {

@@ -1,4 +1,4 @@
-export type Order = {
+export type AlpacaOrder = {
   id: string;
   client_order_id: string;
   created_at: string;
@@ -34,7 +34,7 @@ export type Order = {
   hwm: null; // TODO
 };
 
-export type OrderUpdate = {
+export type AlpacaOrderUpdate = {
   event:
     | "new"
     | "fill"
@@ -53,15 +53,15 @@ export type OrderUpdate = {
     | "order_replace_rejected"
     | "order_cancel_rejected";
   timestamp: string;
-  order: Order;
+  order: AlpacaOrder;
   execution_id: string;
 };
 
-export type OrderUpdateNew = OrderUpdate & {
+export type AlpacaOrderUpdateNew = AlpacaOrderUpdate & {
   event: "new";
 };
 
-export type OrderUpdateFill = OrderUpdate & {
+export type AlpacaOrderUpdateFill = AlpacaOrderUpdate & {
   event: "fill";
   price: string;
   qty: string;

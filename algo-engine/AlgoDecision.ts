@@ -48,7 +48,7 @@ export namespace AlgoDecision {
   export class UpdateLimitPrice extends AlgoDecision {
     constructor(
       symbol: string,
-      public readonly orderId: string,
+      public readonly clientOrderId: string,
       public readonly quantity: number,
       public readonly newLimitPrice: number
     ) {

@@ -1,5 +1,5 @@
-import { MarketData } from "../market-data/MarketData";
-import { OrderManager } from "../order-manager/OrderManager";
+import { MarketDataService } from "../market-data/MarketDataService";
+import { OrderService } from "../orders/OrderService";
 import { PositionService } from "../positions/PositionService";
 import { Algo } from "./Algo";
 
@@ -7,20 +7,20 @@ export class AlgoEngine {
   private algos: Algo[] = [];
 
   constructor(
-    private marketData: MarketData,
-    private orderManager: OrderManager,
+    private marketDataService: MarketDataService,
+    private orderService: OrderService,
     private positionService: PositionService
   ) {}
 
   run() {
     setInterval(() => {
-      const orderUpdates = this.orderManager.dequeueOrderUpdates();
+      const orderUpdates = this.orderService.dequeueOrderUpdates();
 
       this.algos.forEach((algo) => {
         algo
-          .decide(orderUpdates, this.marketData, this.positionService)
+          .decide(orderUpdates, this.marketDataService, this.positionService)
           .forEach((decision) => {
-            this.orderManager.perform(decision);
+            this.orderService.perform(decision);
           });
       });
     }, 1000);
