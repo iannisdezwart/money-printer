@@ -1,4 +1,4 @@
-import { OrderTimeInForce } from "./OrderTimeInForce";
+import { OrderTimeInForce } from "../../models/OrderTimeInForce";
 
 export type PatchOrderRequest = {
   clientOrderId: string;

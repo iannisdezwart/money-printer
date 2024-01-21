@@ -11,7 +11,15 @@ export class MarketDataService {
 
   static async create(marketDataAdapters: IMarketDataAdapter[]) {
     return new MarketDataService(
-      new Map(marketDataAdapters.map((mda) => [mda.exchange, mda]))
+      new Map(
+        marketDataAdapters
+          .map((adapter) =>
+            adapter.exchanges.map(
+              (exchange) => <[Exchange, IMarketDataAdapter]>[exchange, adapter]
+            )
+          )
+          .flat()
+      )
     );
   }
 

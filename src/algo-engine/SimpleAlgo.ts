@@ -1,8 +1,6 @@
 import { MarketDataService } from "../market-data/MarketDataService";
-import {
-  OrderUpdateEvent,
-  OrderUpdateEventType,
-} from "../orders/exchanges/models/OrderUpdateEvent";
+import { OrderUpdateEvent } from "../orders/exchanges/models/OrderUpdateEvent";
+import { OrderStatus } from "../orders/models/OrderStatus";
 import { PositionService } from "../positions/PositionService";
 import { Algo } from "./Algo";
 import { AlgoDecision } from "./AlgoDecision";
@@ -61,10 +59,10 @@ export class SimpleAlgo extends Algo {
     const lastFiveMinuteBars = marketDataService.getBars(this.symbol).slice(-5);
 
     const numPositiveBars = lastFiveMinuteBars.filter(
-      (bar) => bar.isGreen
+      (bar) => !bar.isRed
     ).length;
     const numNegativeBars = lastFiveMinuteBars.filter(
-      (bar) => bar.isRed
+      (bar) => !bar.isGreen
     ).length;
 
     const openingPrice = lastFiveMinuteBars[0].open;
@@ -175,7 +173,7 @@ export class SimpleAlgo extends Algo {
 
     const lastOrderUpdate = orderUpdates[orderUpdates.length - 1];
 
-    if (lastOrderUpdate.eventType == OrderUpdateEventType.Fill) {
+    if (lastOrderUpdate.orderStatus == OrderStatus.Filled) {
       console.log("[SimpleAlgo]: Entered");
       this.state = SimpleAlgoState.In;
       this.clientOrderId = lastOrderUpdate.clientOrderId;
@@ -275,7 +273,7 @@ export class SimpleAlgo extends Algo {
 
     const lastOrderUpdate = orderUpdates[orderUpdates.length - 1];
 
-    if (lastOrderUpdate.eventType == OrderUpdateEventType.Fill) {
+    if (lastOrderUpdate.orderStatus == OrderStatus.Filled) {
       console.log("[SimpleAlgo]: Exited");
 
       this.state = SimpleAlgoState.Out;

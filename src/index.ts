@@ -7,7 +7,7 @@ import { Exchange } from "./algo-engine/models/Exchange";
 import { MarketDataService } from "./market-data/MarketDataService";
 import { AlpacaCryptoMarketDataAdapter } from "./market-data/exchanges/alpaca-crypto/AlpacaCryptoMarketDataAdapter";
 import { OrderService } from "./orders/OrderService";
-import { AlpacaCryptoExchange } from "./orders/exchanges/alpaca-crypto/AlpacaCryptoExchange";
+import { AlpacaTradeAdapter } from "./orders/exchanges/alpaca/AlpacaTradeAdapter";
 import { PositionService } from "./positions/PositionService";
 
 dotenv.config();
@@ -30,7 +30,7 @@ const main = async () => {
     symbol: "BTC/USD",
   };
 
-  const alpacaCryptoExchange = await AlpacaCryptoExchange.create(alpaca);
+  const alpacaCryptoExchange = await AlpacaTradeAdapter.create(alpaca);
   const orderService = await OrderService.create([alpacaCryptoExchange]);
 
   const alpacaCryptoMarketDataAdapter =

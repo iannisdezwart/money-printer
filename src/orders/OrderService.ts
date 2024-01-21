@@ -1,25 +1,28 @@
 import { AlgoDecision } from "../algo-engine/AlgoDecision";
-import { AssetSymbol } from "../algo-engine/models/AssetSymbol";
+import { Exchange } from "../algo-engine/models/Exchange";
 import { ClientOrderIdGenerator } from "./ClientOrderIdGenerator";
-import { OpenOrders } from "./OpenOrders";
-import { IExchange } from "./exchanges/IExchange";
-import { OrderSide } from "./exchanges/models/OrderSide";
-import { OrderTimeInForce } from "./exchanges/models/OrderTimeInForce";
-import { OrderType } from "./exchanges/models/OrderType";
+import { ITradeAdapter } from "./exchanges/ITradeAdapter";
 import { OrderUpdateEvent } from "./exchanges/models/OrderUpdateEvent";
 import { PatchOrderRequest } from "./exchanges/models/PatchOrderRequest";
 import { PlaceOrderRequest } from "./exchanges/models/PlaceOrderRequest";
+import { OrderSide } from "./models/OrderSide";
+import { OrderTimeInForce } from "./models/OrderTimeInForce";
+import { OrderType } from "./models/OrderType";
+import { OpenOrders } from "./open-orders/OpenOrders";
 
 export class OrderService {
   private orderUpdateEvents: OrderUpdateEvent[] = [];
   private clientOrderIdGenerator = new ClientOrderIdGenerator();
 
-  constructor(private exchanges: IExchange[], private openOrders: OpenOrders) {}
+  constructor(
+    private tradeAdapters: Map<Exchange, ITradeAdapter>,
+    private openOrders: OpenOrders
+  ) {}
 
   private async init() {
-    this.exchanges.forEach((exchange) => {
-      exchange.addOrderUpdateListener((event) => {
-        this.openOrders.update(event);
+    this.tradeAdapters.forEach((adapter) => {
+      adapter.addOrderUpdateListener((event) => {
+        this.openOrders.handleOrderUpdate(event);
         this.orderUpdateEvents.push(event);
       });
     });
@@ -27,20 +30,20 @@ export class OrderService {
     return this;
   }
 
-  static async create(exchanges: IExchange[]): Promise<OrderService> {
+  static async create(tradeAdapters: ITradeAdapter[]) {
     const openOrders = await OpenOrders.create();
-    const inst = new OrderService(exchanges, openOrders);
-    return await inst.init();
-  }
-
-  private routeBySymbol(symbol: AssetSymbol): IExchange {
-    // TODO
-    return this.exchanges[0];
-  }
-
-  private routeByClientOrderId(clientOrderId: string): IExchange {
-    // TODO
-    return this.exchanges[0];
+    return new OrderService(
+      new Map(
+        tradeAdapters
+          .map((tradeAdapter) =>
+            tradeAdapter.exchanges.map(
+              (exchange) => <[Exchange, ITradeAdapter]>[exchange, tradeAdapter]
+            )
+          )
+          .flat()
+      ),
+      openOrders
+    ).init();
   }
 
   dequeueOrderUpdates(): OrderUpdateEvent[] {
@@ -115,13 +118,30 @@ export class OrderService {
     throw new Error("Unknown algo decision");
   }
 
+  private getTradeAdapterByExchange(exchange: Exchange) {
+    if (!this.tradeAdapters.has(exchange)) {
+      throw new Error(`No trade adapter for ${exchange}`);
+    }
+
+    return this.tradeAdapters.get(exchange)!;
+  }
+
+  private getTradeAdapterByClientOrderId(clientOrderId: string) {
+    const order = this.openOrders.getOrder(clientOrderId);
+    if (!order) {
+      throw new Error(`No order with client order id ${clientOrderId}`);
+    }
+
+    return this.getTradeAdapterByExchange(order.symbol.exchange);
+  }
+
   placeOrder(req: PlaceOrderRequest) {
-    const exchange = this.routeBySymbol(req.symbol);
-    exchange.placeOrder(req);
+    console.log("Placing order:", req);
+    return this.getTradeAdapterByExchange(req.symbol.exchange).placeOrder(req);
   }
 
   patchOrder(req: PatchOrderRequest) {
-    const exchange = this.routeByClientOrderId(req.clientOrderId);
-    exchange.patchOrder(req);
+    console.log("Patching order:", req);
+    this.getTradeAdapterByClientOrderId(req.clientOrderId).patchOrder(req);
   }
 }

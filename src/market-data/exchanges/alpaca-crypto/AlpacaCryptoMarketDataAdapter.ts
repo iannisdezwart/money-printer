@@ -9,8 +9,8 @@ import { AlpacaCryptoOrderBook } from "./entities/AlpacaCryptoOrderBook";
 import { AlpacaCryptoBarsMapper } from "./mappers/AlpacaCryptoBarsMapper";
 
 export class AlpacaCryptoMarketDataAdapter extends IMarketDataAdapter {
-  override get exchange() {
-    return Exchange.AlpacaCrypto;
+  override get exchanges() {
+    return [Exchange.AlpacaCrypto];
   }
 
   private static alpacaCryptoBarsMapper = new AlpacaCryptoBarsMapper();
@@ -54,58 +54,51 @@ export class AlpacaCryptoMarketDataAdapter extends IMarketDataAdapter {
         console.log("Error from crypto websocket", err);
         reject(err);
       });
+      this.alpaca.crypto_stream_v1beta3.onCryptoDailyBar((bar) => {
+        console.log("Crypto daily bar received", bar);
+      });
       this.alpaca.crypto_stream_v1beta3.onCryptoBar((_bar) => {
         const bar = _bar as AlpacaCryptoBar;
 
-        if (!this.cryptoBars.has(bar.S)) {
-          this.cryptoBars.set(bar.S, []);
-        }
+        this.addBar(
+          bar.S,
+          AlpacaCryptoMarketDataAdapter.alpacaCryptoBarsMapper.fromAlpacaBar(
+            bar
+          )
+        );
 
-        this.cryptoBars
-          .get(bar.S)!
-          .push(
-            AlpacaCryptoMarketDataAdapter.alpacaCryptoBarsMapper.fromAlpacaBar(
-              bar
-            )
-          );
         console.log("Crypto bar received", bar);
-        console.log("Crypto bars", this.cryptoBars);
-      });
-      this.alpaca.crypto_stream_v1beta3.onCryptoDailyBar((bar) => {
-        console.log("Crypto daily bar received", bar);
+        console.log("Crypto bars", this.getBars(bar.S));
       });
       this.alpaca.crypto_stream_v1beta3.onCryptoUpdatedBar((_bar) => {
         const bar = _bar as AlpacaCryptoBar;
 
-        if (!this.cryptoBars.has(bar.S)) {
-          this.cryptoBars.set(bar.S, []);
-        }
-
-        this.cryptoBars.get(bar.S)![this.cryptoBars.get(bar.S)!.length - 1] =
+        this.replaceBar(
+          bar.S,
           AlpacaCryptoMarketDataAdapter.alpacaCryptoBarsMapper.fromAlpacaBar(
             bar
-          );
+          )
+        );
+
         console.log("Crypto updated bar received", bar);
+        console.log("Crypto bars", this.getBars(bar.S));
       });
       this.alpaca.crypto_stream_v1beta3.onCryptoOrderbook(
         (_orderBookUpdate) => {
           const orderBookUpdate = _orderBookUpdate as AlpacaCryptoOrderBook;
 
-          if (!this.orderBooks.has(orderBookUpdate.S)) {
-            this.orderBooks.set(orderBookUpdate.S, new OrderBook());
-          }
-
-          const mappedOrderBookUpdate =
+          this.updateOrderBook(
+            orderBookUpdate.S,
             AlpacaCryptoMarketDataAdapter.alpacaCryptoBarsMapper.fromAlpacaOrderBookUpdate(
               orderBookUpdate
-            );
+            )
+          );
 
-          this.orderBooks.get(orderBookUpdate.S)!.update(mappedOrderBookUpdate);
           console.log(
             "Crypto orderbook received",
             orderBookUpdate,
             "updated internal to",
-            this.orderBooks.get(orderBookUpdate.S)
+            this.getOrderBook(orderBookUpdate.S)
           );
         }
       );
