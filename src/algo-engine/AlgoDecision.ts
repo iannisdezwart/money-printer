@@ -1,11 +1,13 @@
+import { AssetSymbol } from "./models/AssetSymbol";
+
 export abstract class AlgoDecision {
-  constructor(public readonly symbol: string) {}
+  constructor(public readonly symbol: AssetSymbol) {}
 }
 
 export namespace AlgoDecision {
   export class LimitBuy extends AlgoDecision {
     constructor(
-      symbol: string,
+      symbol: AssetSymbol,
       public readonly quantity: number,
       public readonly price: number
     ) {
@@ -15,7 +17,7 @@ export namespace AlgoDecision {
 
   export class LimitSell extends AlgoDecision {
     constructor(
-      symbol: string,
+      symbol: AssetSymbol,
       public readonly quantity: number,
       public readonly price: number
     ) {
@@ -25,7 +27,7 @@ export namespace AlgoDecision {
 
   export class StopLimitBuy extends AlgoDecision {
     constructor(
-      symbol: string,
+      symbol: AssetSymbol,
       public readonly quantity: number,
       public readonly stopPrice: number,
       public readonly limitPrice: number
@@ -36,7 +38,7 @@ export namespace AlgoDecision {
 
   export class StopLimitSell extends AlgoDecision {
     constructor(
-      symbol: string,
+      symbol: AssetSymbol,
       public readonly quantity: number,
       public readonly stopPrice: number,
       public readonly limitPrice: number
@@ -47,7 +49,7 @@ export namespace AlgoDecision {
 
   export class UpdateLimitPrice extends AlgoDecision {
     constructor(
-      symbol: string,
+      symbol: AssetSymbol,
       public readonly clientOrderId: string,
       public readonly quantity: number,
       public readonly newLimitPrice: number

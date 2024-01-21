@@ -1,9 +1,10 @@
+import { AssetSymbol } from "../../../algo-engine/models/AssetSymbol";
 import { OrderSide } from "./OrderSide";
 import { OrderTimeInForce } from "./OrderTimeInForce";
 import { OrderType } from "./OrderType";
 
 export type PlaceOrderRequest = {
-  symbol: string;
+  symbol: AssetSymbol;
   clientOrderId: string;
   type: OrderType;
   side: OrderSide;

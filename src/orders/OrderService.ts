@@ -1,4 +1,5 @@
 import { AlgoDecision } from "../algo-engine/AlgoDecision";
+import { AssetSymbol } from "../algo-engine/models/AssetSymbol";
 import { ClientOrderIdGenerator } from "./ClientOrderIdGenerator";
 import { OpenOrders } from "./OpenOrders";
 import { IExchange } from "./exchanges/IExchange";
@@ -32,7 +33,7 @@ export class OrderService {
     return await inst.init();
   }
 
-  private routeBySymbol(symbol: string): IExchange {
+  private routeBySymbol(symbol: AssetSymbol): IExchange {
     // TODO
     return this.exchanges[0];
   }

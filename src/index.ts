@@ -2,7 +2,10 @@ import Alpaca from "@alpacahq/alpaca-trade-api";
 import dotenv from "dotenv";
 import { AlgoEngine } from "./algo-engine/AlgoEngine";
 import { SimpleAlgo } from "./algo-engine/SimpleAlgo";
+import { AssetSymbol } from "./algo-engine/models/AssetSymbol";
+import { Exchange } from "./algo-engine/models/Exchange";
 import { MarketDataService } from "./market-data/MarketDataService";
+import { AlpacaCryptoMarketDataAdapter } from "./market-data/exchanges/alpaca-crypto/AlpacaCryptoMarketDataAdapter";
 import { OrderService } from "./orders/OrderService";
 import { AlpacaCryptoExchange } from "./orders/exchanges/alpaca-crypto/AlpacaCryptoExchange";
 import { PositionService } from "./positions/PositionService";
@@ -22,12 +25,27 @@ const main = async () => {
   //   });
   //   console.log(assets);
 
+  const symbolBtcUsd: AssetSymbol = {
+    exchange: Exchange.AlpacaCrypto,
+    symbol: "BTC/USD",
+  };
+
   const alpacaCryptoExchange = await AlpacaCryptoExchange.create(alpaca);
   const orderService = await OrderService.create([alpacaCryptoExchange]);
-  const marketDataService = await MarketDataService.create(alpaca, ["BTC/USD"]);
+
+  const alpacaCryptoMarketDataAdapter =
+    await AlpacaCryptoMarketDataAdapter.create(alpaca, [symbolBtcUsd.symbol]);
+  const marketDataService = await MarketDataService.create([
+    alpacaCryptoMarketDataAdapter,
+  ]);
+
   const positionService = await PositionService.create(alpaca);
-  const algoEngine = new AlgoEngine(marketDataService, orderService, positionService);
-  const simpleAlgo = new SimpleAlgo();
+  const algoEngine = new AlgoEngine(
+    marketDataService,
+    orderService,
+    positionService
+  );
+  const simpleAlgo = new SimpleAlgo(symbolBtcUsd);
 
   algoEngine.addAlgo(simpleAlgo);
   algoEngine.run();

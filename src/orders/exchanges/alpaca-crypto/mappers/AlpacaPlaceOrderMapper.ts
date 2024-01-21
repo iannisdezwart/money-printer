@@ -23,7 +23,7 @@ export class AlpacaPlaceOrderMapper {
 
   toAlpacaPlaceOrderRequest(req: PlaceOrderRequest): AlpacaPlaceOrderRequest {
     return {
-      symbol: req.symbol,
+      symbol: req.symbol.symbol,
       qty: req.qty,
       side: AlpacaMappers.toAlpacaOrderSide(req.side),
       type: AlpacaMappers.toAlpacaOrderType(req.type),

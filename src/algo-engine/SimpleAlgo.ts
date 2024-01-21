@@ -1,9 +1,12 @@
 import { MarketDataService } from "../market-data/MarketDataService";
-import { OrderUpdateEvent, OrderUpdateEventType } from "../orders/exchanges/models/OrderUpdateEvent";
+import {
+  OrderUpdateEvent,
+  OrderUpdateEventType,
+} from "../orders/exchanges/models/OrderUpdateEvent";
 import { PositionService } from "../positions/PositionService";
-import { barIsGreen, barIsRed } from "../utils/bars";
 import { Algo } from "./Algo";
 import { AlgoDecision } from "./AlgoDecision";
+import { AssetSymbol } from "./models/AssetSymbol";
 
 enum SimpleAlgoState {
   Out,
@@ -13,6 +16,10 @@ enum SimpleAlgoState {
 }
 
 export class SimpleAlgo extends Algo {
+  constructor(private symbol: AssetSymbol) {
+    super();
+  }
+
   private state: SimpleAlgoState = SimpleAlgoState.Out;
 
   private side?: "long" | "short";
@@ -30,11 +37,19 @@ export class SimpleAlgo extends Algo {
       case SimpleAlgoState.Out:
         return this.decideOut(orderUpdates, marketDataService, positionService);
       case SimpleAlgoState.Entering:
-        return this.decideEntering(orderUpdates, marketDataService, positionService);
+        return this.decideEntering(
+          orderUpdates,
+          marketDataService,
+          positionService
+        );
       case SimpleAlgoState.In:
         return this.decideIn(orderUpdates, marketDataService, positionService);
       case SimpleAlgoState.Exiting:
-        return this.decideExiting(orderUpdates, marketDataService, positionService);
+        return this.decideExiting(
+          orderUpdates,
+          marketDataService,
+          positionService
+        );
     }
   }
 
@@ -43,15 +58,19 @@ export class SimpleAlgo extends Algo {
     marketDataService: MarketDataService,
     positionService: PositionService
   ) {
-    const lastFiveMinuteBars = marketDataService.getBars("BTC/USD").slice(-5);
+    const lastFiveMinuteBars = marketDataService.getBars(this.symbol).slice(-5);
 
-    const numPositiveBars = lastFiveMinuteBars.filter(barIsGreen).length;
-    const numNegativeBars = lastFiveMinuteBars.filter(barIsRed).length;
+    const numPositiveBars = lastFiveMinuteBars.filter(
+      (bar) => bar.isGreen
+    ).length;
+    const numNegativeBars = lastFiveMinuteBars.filter(
+      (bar) => bar.isRed
+    ).length;
 
-    const openingPrice = lastFiveMinuteBars[0].Open;
-    const closingPrice = lastFiveMinuteBars[4].Close;
-    const lowPrice = Math.min(...lastFiveMinuteBars.map((bar) => bar.Low));
-    const highPrice = Math.max(...lastFiveMinuteBars.map((bar) => bar.High));
+    const openingPrice = lastFiveMinuteBars[0].open;
+    const closingPrice = lastFiveMinuteBars[4].close;
+    const lowPrice = Math.min(...lastFiveMinuteBars.map((bar) => bar.low));
+    const highPrice = Math.max(...lastFiveMinuteBars.map((bar) => bar.high));
     const priceChangeRatio = closingPrice / openingPrice;
 
     console.log("[SimpleAlgo]: listening");
@@ -59,26 +78,27 @@ export class SimpleAlgo extends Algo {
     console.log("[SimpleAlgo]: numNegativeBars", numNegativeBars);
     console.log(
       "[SimpleAlgo]: lastBar",
-      barIsGreen(lastFiveMinuteBars[4]) ? "green" : "red"
+      lastFiveMinuteBars[4].isGreen ? "green" : "red"
     );
     console.log("[SimpleAlgo]: openingPrice", openingPrice);
     console.log("[SimpleAlgo]: closingPrice", closingPrice);
     console.log(
       "[SimpleAlgo]: highest bid",
-      marketDataService.getOrderBook("BTC/USD")!.getBids()[0].price
+      marketDataService.getOrderBook(this.symbol)!.getBids()[0].price
     );
     console.log(
       "[SimpleAlgo]: lowest ask",
-      marketDataService.getOrderBook("BTC/USD")!.getAsks()[0].price
+      marketDataService.getOrderBook(this.symbol)!.getAsks()[0].price
     );
     console.log("[SimpleAlgo]: priceChangeRatio", priceChangeRatio);
-    if (barIsGreen(lastFiveMinuteBars[4])) {
+    if (lastFiveMinuteBars[4].isGreen) {
       console.log(
         "[SimpleAlgo]: long conditions",
         numNegativeBars >= 3,
-        barIsGreen(lastFiveMinuteBars[4]),
+        lastFiveMinuteBars[4].isGreen,
         priceChangeRatio >= 0.98,
-        marketDataService.getOrderBook("BTC/USD")!.getAsks()[0].price * 0.998 <=
+        marketDataService.getOrderBook(this.symbol)!.getAsks()[0].price *
+          0.998 <=
           closingPrice
       );
     }
@@ -88,19 +108,21 @@ export class SimpleAlgo extends Algo {
     //     numPositiveBars >= 3,
     //     barIsRed(lastFiveMinuteBars[4]),
     //     priceChangeRatio <= 1.02,
-    //     marketDataService.getOrderBook("BTC/USD")!.getBids()[0].price >= closingPrice
+    //     marketDataService.getOrderBook(this.symbol)!.getBids()[0].price >= closingPrice
     //   );
     // }
 
     if (
       numNegativeBars >= 3 &&
-      barIsGreen(lastFiveMinuteBars[4]) &&
+      lastFiveMinuteBars[4].isGreen &&
       priceChangeRatio >= 0.98 &&
-      marketDataService.getOrderBook("BTC/USD")!.getAsks()[0].price * 0.998 <=
+      marketDataService.getOrderBook(this.symbol)!.getAsks()[0].price * 0.998 <=
         closingPrice
     ) {
       this.side = "long";
-      this.inPrice = marketDataService.getOrderBook("BTC/USD")!.getAsks()[0].price;
+      this.inPrice = marketDataService
+        .getOrderBook(this.symbol)!
+        .getAsks()[0].price;
       this.stopPrice = this.inPrice * 0.995;
       this.takeProfitPrice = this.inPrice * 1.01;
       console.log("Entering long");
@@ -108,7 +130,7 @@ export class SimpleAlgo extends Algo {
 
       return [
         new AlgoDecision.StopLimitBuy(
-          "BTC/USD",
+          this.symbol,
           0.1,
           this.inPrice,
           this.stopPrice
@@ -120,7 +142,7 @@ export class SimpleAlgo extends Algo {
     //   numPositiveBars >= 3 &&
     //   barIsRed(lastFiveMinuteBars[4]) &&
     //   priceChangeRatio <= 1.02 &&
-    //   marketDataService.getOrderBook("BTC/USD")!.getBids()[0].price >= closingPrice
+    //   marketDataService.getOrderBook(this.symbol)!.getBids()[0].price >= closingPrice
     // ) {
     //   this.side = "short";
     //   this.inPrice = lastFiveMinuteBars[4].Close;
@@ -131,7 +153,7 @@ export class SimpleAlgo extends Algo {
 
     //   return [
     //     new AlgoDecision.StopLimitSell(
-    //       "BTC/USD",
+    //       this.symbol,
     //       0.1,
     //       this.inPrice,
     //       this.stopPrice
@@ -159,9 +181,9 @@ export class SimpleAlgo extends Algo {
       this.clientOrderId = lastOrderUpdate.clientOrderId;
 
       if (this.side! == "long") {
-        return [new AlgoDecision.LimitSell("BTC/USD", 0.1, this.stopPrice!)];
+        return [new AlgoDecision.LimitSell(this.symbol, 0.1, this.stopPrice!)];
       } else {
-        return [new AlgoDecision.LimitBuy("BTC/USD", 0.1, this.stopPrice!)];
+        return [new AlgoDecision.LimitBuy(this.symbol, 0.1, this.stopPrice!)];
       }
     }
 
@@ -177,8 +199,8 @@ export class SimpleAlgo extends Algo {
   ) {
     const currentPrice =
       this.side == "long"
-        ? marketDataService.getOrderBook("BTC/USD")!.getAsks()[0].price
-        : marketDataService.getOrderBook("BTC/USD")!.getBids()[0].price;
+        ? marketDataService.getOrderBook(this.symbol)!.getAsks()[0].price
+        : marketDataService.getOrderBook(this.symbol)!.getBids()[0].price;
 
     // Exit
 
@@ -186,32 +208,34 @@ export class SimpleAlgo extends Algo {
       console.log("[SimpleAlgo]: Exiting long");
       this.state = SimpleAlgoState.Exiting;
 
-      return [new AlgoDecision.LimitSell("BTC/USD", 0.1, currentPrice * 0.999)];
+      return [
+        new AlgoDecision.LimitSell(this.symbol, 0.1, currentPrice * 0.999),
+      ];
     }
 
     // if (this.side === "short" && currentPrice <= this.takeProfitPrice!) {
     //   console.log("[SimpleAlgo]: Exiting short");
     //   this.state = SimpleAlgoState.Exiting;
 
-    //   return [new AlgoDecision.LimitBuy("BTC/USD", 0.1, currentPrice * 1.001)];
+    //   return [new AlgoDecision.LimitBuy(this.symbol, 0.1, currentPrice * 1.001)];
     // }
 
     // Update prices
 
-    const bars = marketDataService.getBars("BTC/USD");
+    const bars = marketDataService.getBars(this.symbol);
     const lastBar = bars.slice(-1)[0];
 
     if (
       this.side === "long" &&
-      barIsGreen(lastBar) &&
-      lastBar.High > this.takeProfitPrice!
+      lastBar.isGreen &&
+      lastBar.high > this.takeProfitPrice!
     ) {
-      this.takeProfitPrice = lastBar.High;
+      this.takeProfitPrice = lastBar.high;
       this.stopPrice = this.takeProfitPrice * 0.995;
 
       return [
         new AlgoDecision.UpdateLimitPrice(
-          "BTC/USD",
+          this.symbol,
           this.clientOrderId!,
           0.1,
           this.stopPrice!
@@ -229,7 +253,7 @@ export class SimpleAlgo extends Algo {
 
     //   return [
     //     new AlgoDecision.UpdateLimitPrice(
-    //       "BTC/USD",
+    //       this.symbol,
     //       this.orderId!,
     //       0.1,
     //       this.stopPrice!

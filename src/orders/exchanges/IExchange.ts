@@ -5,7 +5,6 @@ import { PlaceOrderRequest } from "./models/PlaceOrderRequest";
 
 export abstract class IExchange {
   onOrderUpdate?: OrderUpdateEventHandler;
-
   addOrderUpdateListener(onOrderUpdate: OrderUpdateEventHandler): void {
     this.onOrderUpdate = onOrderUpdate;
   }
