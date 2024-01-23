@@ -1,60 +1,122 @@
-import { AssetSymbol } from "./models/AssetSymbol";
 
 export abstract class AlgoDecision {
-  constructor(public readonly symbol: AssetSymbol) {}
+  constructor(public readonly assetId: string) {}
 }
 
 export namespace AlgoDecision {
-  export class LimitBuy extends AlgoDecision {
+  export abstract class PlaceOrderDecision extends AlgoDecision {
     constructor(
-      symbol: AssetSymbol,
+      assetId: string,
       public readonly quantity: number,
-      public readonly price: number
+      public readonly callback?: (clientOrderId: string) => void
     ) {
-      super(symbol);
+      super(assetId);
     }
   }
 
-  export class LimitSell extends AlgoDecision {
+  export class LimitBuy extends PlaceOrderDecision {
     constructor(
-      symbol: AssetSymbol,
-      public readonly quantity: number,
-      public readonly price: number
+      assetId: string,
+      quantity: number,
+      public readonly price: number,
+      callback?: (clientOrderId: string) => void
     ) {
-      super(symbol);
+      super(assetId, quantity, callback);
     }
   }
 
-  export class StopLimitBuy extends AlgoDecision {
+  export class LimitSell extends PlaceOrderDecision {
     constructor(
-      symbol: AssetSymbol,
-      public readonly quantity: number,
+      assetId: string,
+      quantity: number,
+      public readonly price: number,
+      callback?: (clientOrderId: string) => void
+    ) {
+      super(assetId, quantity, callback);
+    }
+  }
+
+  export class StopLimitBuy extends PlaceOrderDecision {
+    constructor(
+      assetId: string,
+      quantity: number,
       public readonly stopPrice: number,
-      public readonly limitPrice: number
+      public readonly limitPrice: number,
+      callback?: (clientOrderId: string) => void
     ) {
-      super(symbol);
+      super(assetId, quantity, callback);
     }
   }
 
-  export class StopLimitSell extends AlgoDecision {
+  export class StopLimitSell extends PlaceOrderDecision {
     constructor(
-      symbol: AssetSymbol,
-      public readonly quantity: number,
+      assetId: string,
+      quantity: number,
       public readonly stopPrice: number,
-      public readonly limitPrice: number
+      public readonly limitPrice: number,
+      callback?: (clientOrderId: string) => void
     ) {
-      super(symbol);
+      super(assetId, quantity, callback);
+    }
+  }
+
+  export class TwoLeggedLimitBuy extends PlaceOrderDecision {
+    constructor(
+      assetId: string,
+      quantity: number,
+      public readonly limitPrice: number,
+      public readonly takeProfitPrice: number,
+      public readonly stopLossPrice: number,
+      callback?: (clientOrderId: string) => void
+    ) {
+      super(assetId, quantity, callback);
+    }
+  }
+  export class TwoLeggedLimitSell extends PlaceOrderDecision {
+    constructor(
+      assetId: string,
+      quantity: number,
+      public readonly limitPrice: number,
+      public readonly takeProfitPrice: number,
+      public readonly stopLossPrice: number,
+      callback?: (clientOrderId: string) => void
+    ) {
+      super(assetId, quantity, callback);
+    }
+  }
+
+  export class LimitStopLossBuy extends PlaceOrderDecision {
+    constructor(
+      assetId: string,
+      quantity: number,
+      public readonly limitPrice: number,
+      public readonly stopLossPrice: number,
+      callback?: (clientOrderId: string) => void
+    ) {
+      super(assetId, quantity, callback);
+    }
+  }
+
+  export class LimitStopLossSell extends PlaceOrderDecision {
+    constructor(
+      assetId: string,
+      quantity: number,
+      public readonly limitPrice: number,
+      public readonly stopLossPrice: number,
+      callback?: (clientOrderId: string) => void
+    ) {
+      super(assetId, quantity, callback);
     }
   }
 
   export class UpdateLimitPrice extends AlgoDecision {
     constructor(
-      symbol: AssetSymbol,
+      assetId: string,
       public readonly clientOrderId: string,
       public readonly quantity: number,
       public readonly newLimitPrice: number
     ) {
-      super(symbol);
+      super(assetId);
     }
   }
 }

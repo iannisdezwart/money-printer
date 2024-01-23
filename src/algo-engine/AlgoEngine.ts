@@ -1,7 +1,7 @@
-import { MarketDataService } from "../market-data/MarketDataService";
-import { OrderService } from "../orders/OrderService";
-import { PositionService } from "../positions/PositionService";
-import { Algo } from "./Algo";
+import { MarketDataService } from "../market-data/MarketDataService.js";
+import { OrderService } from "../orders/OrderService.js";
+import { PositionService } from "../positions/PositionService.js";
+import { Algo } from "./Algo.js";
 
 export class AlgoEngine {
   private algos: Algo[] = [];
@@ -23,7 +23,7 @@ export class AlgoEngine {
             this.orderService.perform(decision);
           });
       });
-    }, 1000);
+    }, 250);
   }
 
   addAlgo(algo: Algo) {

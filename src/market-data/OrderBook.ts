@@ -1,4 +1,4 @@
-import { OrderBookUpdate, OrderBookUpdateType } from "./models/OrderBookUpdate";
+import { OrderBookUpdate, OrderBookUpdateType } from "./models/OrderBookUpdate.js";
 
 export type OrderBookEntry = {
   price: number;

@@ -1,12 +1,11 @@
-import { AssetSymbol } from "../../algo-engine/models/AssetSymbol";
-import { OrderSide } from "./OrderSide";
-import { OrderStatus } from "./OrderStatus";
-import { OrderTimeInForce } from "./OrderTimeInForce";
-import { OrderType } from "./OrderType";
+import { OrderSide } from "./OrderSide.js";
+import { OrderStatus } from "./OrderStatus.js";
+import { OrderTimeInForce } from "./OrderTimeInForce.js";
+import { OrderType } from "./OrderType.js";
 
 export type Order = {
   clientOrderId: string;
-  symbol: AssetSymbol;
+  assetId: string;
   qty: number;
   filledQty: number;
   filledAvgPrice: number;

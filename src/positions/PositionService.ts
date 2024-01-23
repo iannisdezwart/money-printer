@@ -1,4 +1,4 @@
-import Alpaca from "@alpacahq/alpaca-trade-api";
+import Alpaca from "@alpacahq/alpaca-trade-api/dist/alpaca-trade-api.js";
 
 type Position = {
   qty: number; // long is positive, short is negative

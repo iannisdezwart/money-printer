@@ -1,10 +1,10 @@
-import { BidirectionalMap } from "../../../../utils/BidirectionalMap";
-import { OrderSide } from "../../../models/OrderSide";
-import { OrderStatus } from "../../../models/OrderStatus";
-import { OrderTimeInForce } from "../../../models/OrderTimeInForce";
-import { OrderType } from "../../../models/OrderType";
-import { AlpacaOrder } from "../entities/AlpacaOrderUpdate";
-import { AlpacaPlaceOrderRequest } from "./AlpacaPlaceOrderMapper";
+import { BidirectionalMap } from "../../../../utils/BidirectionalMap.js";
+import { OrderSide } from "../../../models/OrderSide.js";
+import { OrderStatus } from "../../../models/OrderStatus.js";
+import { OrderTimeInForce } from "../../../models/OrderTimeInForce.js";
+import { OrderType } from "../../../models/OrderType.js";
+import { AlpacaOrder } from "../entities/AlpacaOrderUpdate.js";
+import { AlpacaPlaceOrderRequest } from "./AlpacaPlaceOrderMapper.js";
 
 export namespace AlpacaMappers {
   const statusMap = new BidirectionalMap<OrderStatus, AlpacaOrder["status"]>([

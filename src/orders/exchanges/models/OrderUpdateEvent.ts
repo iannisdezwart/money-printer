@@ -1,4 +1,4 @@
-import { OrderStatus } from "../../models/OrderStatus";
+import { OrderStatus } from "../../models/OrderStatus.js";
 
 export type OrderUpdateEvent =
   | OrderUpdateEvent.Sent

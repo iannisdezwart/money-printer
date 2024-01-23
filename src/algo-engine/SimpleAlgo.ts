@@ -1,10 +1,9 @@
-import { MarketDataService } from "../market-data/MarketDataService";
-import { OrderUpdateEvent } from "../orders/exchanges/models/OrderUpdateEvent";
-import { OrderStatus } from "../orders/models/OrderStatus";
-import { PositionService } from "../positions/PositionService";
-import { Algo } from "./Algo";
-import { AlgoDecision } from "./AlgoDecision";
-import { AssetSymbol } from "./models/AssetSymbol";
+import { MarketDataService } from "../market-data/MarketDataService.js";
+import { OrderUpdateEvent } from "../orders/exchanges/models/OrderUpdateEvent.js";
+import { OrderStatus } from "../orders/models/OrderStatus.js";
+import { PositionService } from "../positions/PositionService.js";
+import { Algo } from "./Algo.js";
+import { AlgoDecision } from "./AlgoDecision.js";
 
 enum SimpleAlgoState {
   Out,
@@ -13,18 +12,41 @@ enum SimpleAlgoState {
   Exiting,
 }
 
+export type SimpleAlgoParams = {
+  lookbackPeriodMs: number;
+  maxSpread: number;
+
+  enterParams: {
+    tradeQty: number;
+
+    jumpSize: number;
+    jumpContUpOffs: number;
+    jumpContUpSize: number;
+    jumpContUpStop: number;
+    jumpContDnOffs: number;
+    jumpContDnSize: number;
+    jumpContDnStop: number;
+
+    fallSize: number;
+    fallContUpOffs: number;
+    fallContUpSize: number;
+    fallContUpStop: number;
+    fallContDnOffs: number;
+    fallContDnSize: number;
+    fallContDnStop: number;
+  };
+};
+
 export class SimpleAlgo extends Algo {
-  constructor(private symbol: AssetSymbol) {
+  constructor(private assetId: string, private params: SimpleAlgoParams) {
     super();
   }
 
   private state: SimpleAlgoState = SimpleAlgoState.Out;
 
-  private side?: "long" | "short";
-  private inPrice?: number;
-  private stopPrice?: number;
-  private takeProfitPrice?: number;
-  private clientOrderId?: string;
+  private longClientOrderId?: string;
+  private shortClientOrderId?: string;
+  private position?: "long" | "short";
 
   override decide(
     orderUpdates: OrderUpdateEvent[],
@@ -56,108 +78,96 @@ export class SimpleAlgo extends Algo {
     marketDataService: MarketDataService,
     positionService: PositionService
   ) {
-    const lastFiveMinuteBars = marketDataService.getBars(this.symbol).slice(-5);
+    // const TRADE_QTY = 1;
 
-    const numPositiveBars = lastFiveMinuteBars.filter(
-      (bar) => !bar.isRed
-    ).length;
-    const numNegativeBars = lastFiveMinuteBars.filter(
-      (bar) => !bar.isGreen
-    ).length;
+    // const JUMP_SIZE = 0.06;
+    // const JUMP_CONT_UP_OFFS = 0.03;
+    // const JUMP_CONT_UP_SIZE = 0.03;
+    // const JUMP_CONT_UP_STOP = 0.03;
+    // const JUMP_CONT_DN_OFFS = 0.03;
+    // const JUMP_CONT_DN_SIZE = 0.03;
+    // const JUMP_CONT_DN_STOP = 0.03;
 
-    const openingPrice = lastFiveMinuteBars[0].open;
-    const closingPrice = lastFiveMinuteBars[4].close;
-    const lowPrice = Math.min(...lastFiveMinuteBars.map((bar) => bar.low));
-    const highPrice = Math.max(...lastFiveMinuteBars.map((bar) => bar.high));
-    const priceChangeRatio = closingPrice / openingPrice;
+    // const FALL_SIZE = 0.06;
+    // const FALL_CONT_UP_OFFS = 0.03;
+    // const FALL_CONT_UP_SIZE = 0.03;
+    // const FALL_CONT_UP_STOP = 0.03;
+    // const FALL_CONT_DN_OFFS = 0.03;
+    // const FALL_CONT_DN_SIZE = 0.03;
+    // const FALL_CONT_DN_STOP = 0.03;
 
-    console.log("[SimpleAlgo]: listening");
-    console.log("[SimpleAlgo]: numPositiveBars", numPositiveBars);
-    console.log("[SimpleAlgo]: numNegativeBars", numNegativeBars);
-    console.log(
-      "[SimpleAlgo]: lastBar",
-      lastFiveMinuteBars[4].isGreen ? "green" : "red"
-    );
-    console.log("[SimpleAlgo]: openingPrice", openingPrice);
-    console.log("[SimpleAlgo]: closingPrice", closingPrice);
-    console.log(
-      "[SimpleAlgo]: highest bid",
-      marketDataService.getOrderBook(this.symbol)!.getBids()[0].price
-    );
-    console.log(
-      "[SimpleAlgo]: lowest ask",
-      marketDataService.getOrderBook(this.symbol)!.getAsks()[0].price
-    );
-    console.log("[SimpleAlgo]: priceChangeRatio", priceChangeRatio);
-    if (lastFiveMinuteBars[4].isGreen) {
-      console.log(
-        "[SimpleAlgo]: long conditions",
-        numNegativeBars >= 3,
-        lastFiveMinuteBars[4].isGreen,
-        priceChangeRatio >= 0.98,
-        marketDataService.getOrderBook(this.symbol)!.getAsks()[0].price *
-          0.998 <=
-          closingPrice
+    const quotes = marketDataService
+      .getLatestQuotes(
+        this.assetId,
+        new Date(Date.now() - this.params.lookbackPeriodMs)
+      )
+      .filter(
+        (quote) => quote.askPrice - quote.bidPrice <= this.params.maxSpread
       );
+
+    if (quotes.length === 0) {
+      return [];
     }
-    // if (barIsRed(lastFiveMinuteBars[4])) {
-    //   console.log(
-    //     "[SimpleAlgo]: short conditions",
-    //     numPositiveBars >= 3,
-    //     barIsRed(lastFiveMinuteBars[4]),
-    //     priceChangeRatio <= 1.02,
-    //     marketDataService.getOrderBook(this.symbol)!.getBids()[0].price >= closingPrice
-    //   );
-    // }
+
+    const highBid = Math.max(...quotes.map((quote) => quote.bidPrice));
+    const highAsk = Math.max(...quotes.map((quote) => quote.askPrice));
+    const lowBid = Math.min(...quotes.map((quote) => quote.bidPrice));
+    const lowAsk = Math.min(...quotes.map((quote) => quote.askPrice));
+    const lastBid = quotes[quotes.length - 1]?.bidPrice;
+    const lastAsk = quotes[quotes.length - 1]?.askPrice;
+
+    console.log("lastBid", lastBid);
+    console.log("lastBid - lowBid", lastBid - lowBid);
+    console.log("lastBid - highBid", lastBid - highBid);
+    console.log("lastAsk", lastAsk);
+    console.log("lastAsk - lowAsk", lastAsk - lowAsk);
+    console.log("lastAsk - highAsk", lastAsk - highAsk);
 
     if (
-      numNegativeBars >= 3 &&
-      lastFiveMinuteBars[4].isGreen &&
-      priceChangeRatio >= 0.98 &&
-      marketDataService.getOrderBook(this.symbol)!.getAsks()[0].price * 0.998 <=
-        closingPrice
+      lastBid >= lowBid + this.params.enterParams.jumpSize &&
+      lastAsk >= lowAsk + this.params.enterParams.jumpSize
     ) {
-      this.side = "long";
-      this.inPrice = marketDataService
-        .getOrderBook(this.symbol)!
-        .getAsks()[0].price;
-      this.stopPrice = this.inPrice * 0.995;
-      this.takeProfitPrice = this.inPrice * 1.01;
-      console.log("Entering long");
+      console.log("[SimpleAlgo]: Jump detected, entering...");
+
       this.state = SimpleAlgoState.Entering;
 
       return [
-        new AlgoDecision.StopLimitBuy(
-          this.symbol,
-          0.1,
-          this.inPrice,
-          this.stopPrice
+        new AlgoDecision.TwoLeggedLimitSell(
+          this.assetId,
+          this.params.enterParams.tradeQty,
+          lastAsk + this.params.enterParams.jumpContUpOffs,
+          lastAsk +
+            this.params.enterParams.jumpContUpOffs -
+            this.params.enterParams.jumpContUpSize,
+          lastAsk +
+            this.params.enterParams.jumpContUpOffs +
+            this.params.enterParams.jumpContUpStop
         ),
       ];
     }
 
-    // if (
-    //   numPositiveBars >= 3 &&
-    //   barIsRed(lastFiveMinuteBars[4]) &&
-    //   priceChangeRatio <= 1.02 &&
-    //   marketDataService.getOrderBook(this.symbol)!.getBids()[0].price >= closingPrice
-    // ) {
-    //   this.side = "short";
-    //   this.inPrice = lastFiveMinuteBars[4].Close;
-    //   this.stopPrice = this.inPrice * 1.005;
-    //   this.takeProfitPrice = this.inPrice * 0.99;
-    //   console.log("[SimpleAlgo]: Entering short");
-    //   this.state = SimpleAlgoState.Entering;
+    if (
+      lastBid <= highBid - this.params.enterParams.fallSize &&
+      lastAsk <= highAsk - this.params.enterParams.fallSize
+    ) {
+      console.log("[SimpleAlgo]: Fall detected, entering...");
 
-    //   return [
-    //     new AlgoDecision.StopLimitSell(
-    //       this.symbol,
-    //       0.1,
-    //       this.inPrice,
-    //       this.stopPrice
-    //     ),
-    //   ];
-    // }
+      this.state = SimpleAlgoState.Entering;
+
+      return [
+        new AlgoDecision.TwoLeggedLimitBuy(
+          this.assetId,
+          this.params.enterParams.tradeQty,
+          lastBid - this.params.enterParams.fallContDnOffs,
+          lastBid -
+            this.params.enterParams.fallContDnOffs +
+            this.params.enterParams.fallContDnSize,
+          lastBid -
+            this.params.enterParams.fallContDnOffs -
+            this.params.enterParams.fallContDnStop
+        ),
+      ];
+    }
 
     return [];
   }
@@ -171,19 +181,63 @@ export class SimpleAlgo extends Algo {
       return [];
     }
 
-    const lastOrderUpdate = orderUpdates[orderUpdates.length - 1];
-
-    if (lastOrderUpdate.orderStatus == OrderStatus.Filled) {
-      console.log("[SimpleAlgo]: Entered");
-      this.state = SimpleAlgoState.In;
-      this.clientOrderId = lastOrderUpdate.clientOrderId;
-
-      if (this.side! == "long") {
-        return [new AlgoDecision.LimitSell(this.symbol, 0.1, this.stopPrice!)];
-      } else {
-        return [new AlgoDecision.LimitBuy(this.symbol, 0.1, this.stopPrice!)];
+    orderUpdates.forEach((orderUpdate) => {
+      if (
+        orderUpdate.clientOrderId == this.shortClientOrderId &&
+        this.position == "long" &&
+        orderUpdate.orderStatus != OrderStatus.Cancelled
+      ) {
+        console.error(
+          "[SimpleAlgo]: Got an order for short while long",
+          orderUpdate
+        );
       }
-    }
+
+      if (
+        orderUpdate.clientOrderId == this.longClientOrderId &&
+        this.position == "short" &&
+        orderUpdate.orderStatus != OrderStatus.Cancelled
+      ) {
+        console.error(
+          "[SimpleAlgo]: Got an order for long while short",
+          orderUpdate
+        );
+      }
+
+      if (
+        orderUpdate.clientOrderId == this.longClientOrderId &&
+        orderUpdate.orderStatus == OrderStatus.PartiallyFilled
+      ) {
+        this.position = "long";
+      }
+
+      if (
+        orderUpdate.clientOrderId == this.shortClientOrderId &&
+        orderUpdate.orderStatus == OrderStatus.PartiallyFilled
+      ) {
+        this.position = "short";
+      }
+
+      if (
+        orderUpdate.clientOrderId == this.longClientOrderId &&
+        orderUpdate.orderStatus == OrderStatus.Filled
+      ) {
+        this.position = "long";
+
+        console.log("[SimpleAlgo]: In long");
+        this.state = SimpleAlgoState.In;
+      }
+
+      if (
+        orderUpdate.clientOrderId == this.shortClientOrderId &&
+        orderUpdate.orderStatus == OrderStatus.Filled
+      ) {
+        this.position = "short";
+
+        console.log("[SimpleAlgo]: In short");
+        this.state = SimpleAlgoState.In;
+      }
+    });
 
     // TODO: handle timeout & partial fill
 
@@ -195,69 +249,11 @@ export class SimpleAlgo extends Algo {
     marketDataService: MarketDataService,
     positionService: PositionService
   ) {
-    const currentPrice =
-      this.side == "long"
-        ? marketDataService.getOrderBook(this.symbol)!.getAsks()[0].price
-        : marketDataService.getOrderBook(this.symbol)!.getBids()[0].price;
-
-    // Exit
-
-    if (this.side === "long" && currentPrice >= this.takeProfitPrice!) {
-      console.log("[SimpleAlgo]: Exiting long");
-      this.state = SimpleAlgoState.Exiting;
-
-      return [
-        new AlgoDecision.LimitSell(this.symbol, 0.1, currentPrice * 0.999),
-      ];
+    if (orderUpdates.length === 0) {
+      return [];
     }
 
-    // if (this.side === "short" && currentPrice <= this.takeProfitPrice!) {
-    //   console.log("[SimpleAlgo]: Exiting short");
-    //   this.state = SimpleAlgoState.Exiting;
-
-    //   return [new AlgoDecision.LimitBuy(this.symbol, 0.1, currentPrice * 1.001)];
-    // }
-
-    // Update prices
-
-    const bars = marketDataService.getBars(this.symbol);
-    const lastBar = bars.slice(-1)[0];
-
-    if (
-      this.side === "long" &&
-      lastBar.isGreen &&
-      lastBar.high > this.takeProfitPrice!
-    ) {
-      this.takeProfitPrice = lastBar.high;
-      this.stopPrice = this.takeProfitPrice * 0.995;
-
-      return [
-        new AlgoDecision.UpdateLimitPrice(
-          this.symbol,
-          this.clientOrderId!,
-          0.1,
-          this.stopPrice!
-        ),
-      ];
-    }
-
-    // if (
-    //   this.side === "short" &&
-    //   barIsRed(lastBar) &&
-    //   lastBar.Low < this.takeProfitPrice!
-    // ) {
-    //   this.takeProfitPrice = lastBar.Low;
-    //   this.stopPrice = this.takeProfitPrice * 1.005;
-
-    //   return [
-    //     new AlgoDecision.UpdateLimitPrice(
-    //       this.symbol,
-    //       this.orderId!,
-    //       0.1,
-    //       this.stopPrice!
-    //     ),
-    //   ];
-    // }
+    orderUpdates.forEach((orderUpdate) => {});
 
     return [];
   }
@@ -277,11 +273,10 @@ export class SimpleAlgo extends Algo {
       console.log("[SimpleAlgo]: Exited");
 
       this.state = SimpleAlgoState.Out;
-      this.side = undefined;
-      this.inPrice = undefined;
-      this.stopPrice = undefined;
-      this.takeProfitPrice = undefined;
-      this.clientOrderId = undefined;
+
+      this.longClientOrderId = undefined;
+      this.shortClientOrderId = undefined;
+      this.position = undefined;
 
       return [];
     }

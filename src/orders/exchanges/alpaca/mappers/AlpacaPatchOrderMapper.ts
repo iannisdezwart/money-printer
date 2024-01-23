@@ -1,5 +1,5 @@
-import { PatchOrderRequest } from "../../models/PatchOrderRequest";
-import { AlpacaMappers } from "./common";
+import { PatchOrderRequest } from "../../models/PatchOrderRequest.js";
+import { AlpacaMappers } from "./common.js";
 
 export interface AlpacaPatchOrderRequest {
   qty?: number;

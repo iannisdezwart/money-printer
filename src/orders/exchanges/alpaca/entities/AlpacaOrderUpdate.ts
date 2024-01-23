@@ -51,7 +51,9 @@ export type AlpacaOrderUpdate = {
     | "calculated"
     | "suspended"
     | "order_replace_rejected"
-    | "order_cancel_rejected";
+    | "order_cancel_rejected"
+    | "held"
+    | "accepted";
   timestamp: string;
   order: AlpacaOrder;
   execution_id: string;

@@ -1,0 +1,39 @@
+{
+  "assets": [
+    {
+      "id": "AAPL",
+      "source": "AlpacaUsEquity",
+      "symbol": "AAPL",
+      "qtyDecimals": 4,
+      "priceDecimals": 2
+    },
+    {
+      "id": "BTC",
+      "source": "AlpacaCrypto",
+      "symbol": "BTC/USD",
+      "qtyDecimals": 16,
+      "priceDecimals": 2
+    },
+    {
+      "id": "TSLA",
+      "source": "AlpacaUsEquity",
+      "symbol": "TSLA",
+      "qtyDecimals": 4,
+      "priceDecimals": 2
+    },
+    {
+      "id": "BA",
+      "source": "AlpacaUsEquity",
+      "symbol": "BA",
+      "qtyDecimals": 4,
+      "priceDecimals": 2
+    },
+    {
+      "id": "VOO",
+      "source": "AlpacaUsEquity",
+      "symbol": "VOO",
+      "qtyDecimals": 4,
+      "priceDecimals": 2
+    }
+  ]
+}

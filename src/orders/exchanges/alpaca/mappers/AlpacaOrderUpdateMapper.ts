@@ -1,6 +1,6 @@
-import { OrderStatus } from "../../../models/OrderStatus";
-import { OrderUpdateEvent } from "../../models/OrderUpdateEvent";
-import { AlpacaOrderUpdate } from "../entities/AlpacaOrderUpdate";
+import { OrderStatus } from "../../../models/OrderStatus.js";
+import { OrderUpdateEvent } from "../../models/OrderUpdateEvent.js";
+import { AlpacaOrderUpdate } from "../entities/AlpacaOrderUpdate.js";
 
 export class AlpacaOrderUpdateMapper {
   private fromAlpacaNewOrder(orderUpdate: AlpacaOrderUpdate): OrderUpdateEvent {
@@ -60,7 +60,9 @@ export class AlpacaOrderUpdateMapper {
     };
   }
 
-  fromAlpacaOrderUpdate(orderUpdate: AlpacaOrderUpdate): OrderUpdateEvent {
+  fromAlpacaOrderUpdate(
+    orderUpdate: AlpacaOrderUpdate
+  ): OrderUpdateEvent | undefined {
     switch (orderUpdate.event) {
       case "new":
         return this.fromAlpacaNewOrder(orderUpdate);
@@ -72,6 +74,10 @@ export class AlpacaOrderUpdateMapper {
         return this.fromAlpacaCancelledOrder(orderUpdate);
       case "rejected":
         return this.fromAlpacaRejectedOrder(orderUpdate);
+      case "pending_new":
+      case "held":
+      case "accepted":
+        return undefined;
       default:
         // TODO: Handle other order update events.
         throw new Error(`Unknown order update event: ${orderUpdate.event}`);

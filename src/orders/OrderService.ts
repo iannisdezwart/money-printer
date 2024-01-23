@@ -1,14 +1,15 @@
-import { AlgoDecision } from "../algo-engine/AlgoDecision";
-import { Exchange } from "../algo-engine/models/Exchange";
-import { ClientOrderIdGenerator } from "./ClientOrderIdGenerator";
-import { ITradeAdapter } from "./exchanges/ITradeAdapter";
-import { OrderUpdateEvent } from "./exchanges/models/OrderUpdateEvent";
-import { PatchOrderRequest } from "./exchanges/models/PatchOrderRequest";
-import { PlaceOrderRequest } from "./exchanges/models/PlaceOrderRequest";
-import { OrderSide } from "./models/OrderSide";
-import { OrderTimeInForce } from "./models/OrderTimeInForce";
-import { OrderType } from "./models/OrderType";
-import { OpenOrders } from "./open-orders/OpenOrders";
+import { AlgoDecision } from "../algo-engine/AlgoDecision.js";
+import { Asset } from "../algo-engine/models/Asset.js";
+import { Exchange } from "../algo-engine/models/Exchange.js";
+import { ClientOrderIdGenerator } from "./ClientOrderIdGenerator.js";
+import { ITradeAdapter } from "./exchanges/ITradeAdapter.js";
+import { OrderUpdateEvent } from "./exchanges/models/OrderUpdateEvent.js";
+import { PatchOrderRequest } from "./exchanges/models/PatchOrderRequest.js";
+import { PlaceOrderRequest } from "./exchanges/models/PlaceOrderRequest.js";
+import { OrderSide } from "./models/OrderSide.js";
+import { OrderTimeInForce } from "./models/OrderTimeInForce.js";
+import { OrderType } from "./models/OrderType.js";
+import { OpenOrders } from "./open-orders/OpenOrders.js";
 
 export class OrderService {
   private orderUpdateEvents: OrderUpdateEvent[] = [];
@@ -16,7 +17,8 @@ export class OrderService {
 
   constructor(
     private tradeAdapters: Map<Exchange, ITradeAdapter>,
-    private openOrders: OpenOrders
+    private openOrders: OpenOrders,
+    private assets: Map<string, Asset>
   ) {}
 
   private async init() {
@@ -30,7 +32,10 @@ export class OrderService {
     return this;
   }
 
-  static async create(tradeAdapters: ITradeAdapter[]) {
+  static async create(
+    tradeAdapters: ITradeAdapter[],
+    assets: Map<string, Asset>
+  ) {
     const openOrders = await OpenOrders.create();
     return new OrderService(
       new Map(
@@ -42,7 +47,8 @@ export class OrderService {
           )
           .flat()
       ),
-      openOrders
+      openOrders,
+      assets
     ).init();
   }
 
@@ -54,35 +60,40 @@ export class OrderService {
 
   perform(algoDecision: AlgoDecision) {
     if (algoDecision instanceof AlgoDecision.LimitBuy) {
+      const clientOrderId = this.clientOrderIdGenerator.generate();
       this.placeOrder({
-        clientOrderId: this.clientOrderIdGenerator.generate(),
-        symbol: algoDecision.symbol,
+        clientOrderId,
+        assetId: algoDecision.assetId,
         qty: algoDecision.quantity,
         side: OrderSide.Buy,
         type: OrderType.Limit,
         limitPrice: algoDecision.price,
         timeInForce: OrderTimeInForce.GoodTillCancel,
       });
+      algoDecision.callback?.(clientOrderId);
       return;
     }
 
     if (algoDecision instanceof AlgoDecision.LimitSell) {
+      const clientOrderId = this.clientOrderIdGenerator.generate();
       this.placeOrder({
-        clientOrderId: this.clientOrderIdGenerator.generate(),
-        symbol: algoDecision.symbol,
+        clientOrderId,
+        assetId: algoDecision.assetId,
         qty: algoDecision.quantity,
         side: OrderSide.Sell,
         type: OrderType.Limit,
         limitPrice: algoDecision.price,
         timeInForce: OrderTimeInForce.GoodTillCancel,
       });
+      algoDecision.callback?.(clientOrderId);
       return;
     }
 
     if (algoDecision instanceof AlgoDecision.StopLimitBuy) {
+      const clientOrderId = this.clientOrderIdGenerator.generate();
       this.placeOrder({
-        clientOrderId: this.clientOrderIdGenerator.generate(),
-        symbol: algoDecision.symbol,
+        clientOrderId,
+        assetId: algoDecision.assetId,
         qty: algoDecision.quantity,
         side: OrderSide.Buy,
         type: OrderType.StopLimit,
@@ -90,13 +101,15 @@ export class OrderService {
         stopPrice: algoDecision.stopPrice,
         timeInForce: OrderTimeInForce.GoodTillCancel,
       });
+      algoDecision.callback?.(clientOrderId);
       return;
     }
 
     if (algoDecision instanceof AlgoDecision.StopLimitSell) {
+      const clientOrderId = this.clientOrderIdGenerator.generate();
       this.placeOrder({
-        clientOrderId: this.clientOrderIdGenerator.generate(),
-        symbol: algoDecision.symbol,
+        clientOrderId,
+        assetId: algoDecision.assetId,
         qty: algoDecision.quantity,
         side: OrderSide.Sell,
         type: OrderType.StopLimit,
@@ -104,6 +117,73 @@ export class OrderService {
         stopPrice: algoDecision.stopPrice,
         timeInForce: OrderTimeInForce.GoodTillCancel,
       });
+      algoDecision.callback?.(clientOrderId);
+      return;
+    }
+
+    if (algoDecision instanceof AlgoDecision.TwoLeggedLimitBuy) {
+      const clientOrderId = this.clientOrderIdGenerator.generate();
+      this.placeOrder({
+        clientOrderId,
+        assetId: algoDecision.assetId,
+        qty: algoDecision.quantity,
+        side: OrderSide.Buy,
+        type: OrderType.Limit,
+        limitPrice: algoDecision.limitPrice,
+        timeInForce: OrderTimeInForce.GoodTillCancel,
+        takeProfitPrice: algoDecision.takeProfitPrice,
+        stopLossPrice: algoDecision.stopLossPrice,
+      });
+      algoDecision.callback?.(clientOrderId);
+      return;
+    }
+
+    if (algoDecision instanceof AlgoDecision.TwoLeggedLimitSell) {
+      const clientOrderId = this.clientOrderIdGenerator.generate();
+      this.placeOrder({
+        clientOrderId,
+        assetId: algoDecision.assetId,
+        qty: algoDecision.quantity,
+        side: OrderSide.Sell,
+        type: OrderType.Limit,
+        limitPrice: algoDecision.limitPrice,
+        timeInForce: OrderTimeInForce.GoodTillCancel,
+        takeProfitPrice: algoDecision.takeProfitPrice,
+        stopLossPrice: algoDecision.stopLossPrice,
+      });
+      algoDecision.callback?.(clientOrderId);
+      return;
+    }
+
+    if (algoDecision instanceof AlgoDecision.LimitStopLossBuy) {
+      const clientOrderId = this.clientOrderIdGenerator.generate();
+      this.placeOrder({
+        clientOrderId,
+        assetId: algoDecision.assetId,
+        qty: algoDecision.quantity,
+        side: OrderSide.Buy,
+        type: OrderType.Limit,
+        limitPrice: algoDecision.limitPrice,
+        timeInForce: OrderTimeInForce.GoodTillCancel,
+        stopLossPrice: algoDecision.stopLossPrice,
+      });
+      algoDecision.callback?.(clientOrderId);
+      return;
+    }
+
+    if (algoDecision instanceof AlgoDecision.LimitStopLossSell) {
+      const clientOrderId = this.clientOrderIdGenerator.generate();
+      this.placeOrder({
+        clientOrderId,
+        assetId: algoDecision.assetId,
+        qty: algoDecision.quantity,
+        side: OrderSide.Sell,
+        type: OrderType.Limit,
+        limitPrice: algoDecision.limitPrice,
+        timeInForce: OrderTimeInForce.GoodTillCancel,
+        stopLossPrice: algoDecision.stopLossPrice,
+      });
+      algoDecision.callback?.(clientOrderId);
       return;
     }
 
@@ -118,12 +198,18 @@ export class OrderService {
     throw new Error("Unknown algo decision");
   }
 
-  private getTradeAdapterByExchange(exchange: Exchange) {
-    if (!this.tradeAdapters.has(exchange)) {
-      throw new Error(`No trade adapter for ${exchange}`);
+  private getTradeAdapterByAssetId(assetId: string) {
+    const asset = this.assets.get(assetId);
+    if (!asset) {
+      throw new Error(`No asset for asset ${assetId}`);
     }
 
-    return this.tradeAdapters.get(exchange)!;
+    const tradeAdapter = this.tradeAdapters.get(asset.exchange);
+    if (tradeAdapter == null) {
+      throw new Error(`No trade adapter for ${asset.exchange}`);
+    }
+
+    return tradeAdapter;
   }
 
   private getTradeAdapterByClientOrderId(clientOrderId: string) {
@@ -132,12 +218,13 @@ export class OrderService {
       throw new Error(`No order with client order id ${clientOrderId}`);
     }
 
-    return this.getTradeAdapterByExchange(order.symbol.exchange);
+    return this.getTradeAdapterByAssetId(order.assetId);
   }
 
   placeOrder(req: PlaceOrderRequest) {
     console.log("Placing order:", req);
-    return this.getTradeAdapterByExchange(req.symbol.exchange).placeOrder(req);
+    this.openOrders.trackOrder(req);
+    return this.getTradeAdapterByAssetId(req.assetId).placeOrder(req);
   }
 
   patchOrder(req: PatchOrderRequest) {

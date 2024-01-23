@@ -1,10 +1,9 @@
-import { AssetSymbol } from "../../../algo-engine/models/AssetSymbol";
-import { OrderSide } from "../../models/OrderSide";
-import { OrderTimeInForce } from "../../models/OrderTimeInForce";
-import { OrderType } from "../../models/OrderType";
+import { OrderSide } from "../../models/OrderSide.js";
+import { OrderTimeInForce } from "../../models/OrderTimeInForce.js";
+import { OrderType } from "../../models/OrderType.js";
 
 export type PlaceOrderRequest = {
-  symbol: AssetSymbol;
+  assetId: string;
   clientOrderId: string;
   type: OrderType;
   side: OrderSide;
@@ -12,4 +11,6 @@ export type PlaceOrderRequest = {
   timeInForce: OrderTimeInForce;
   limitPrice?: number;
   stopPrice?: number;
+  takeProfitPrice?: number;
+  stopLossPrice?: number;
 };

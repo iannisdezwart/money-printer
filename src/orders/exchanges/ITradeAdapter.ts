@@ -1,8 +1,8 @@
-import { Exchange } from "../../algo-engine/models/Exchange";
-import { AbortOrderRequest } from "./models/AbortOrderRequest";
-import { OrderUpdateEvent } from "./models/OrderUpdateEvent";
-import { PatchOrderRequest } from "./models/PatchOrderRequest";
-import { PlaceOrderRequest } from "./models/PlaceOrderRequest";
+import { Exchange } from "../../algo-engine/models/Exchange.js";
+import { AbortOrderRequest } from "./models/AbortOrderRequest.js";
+import { OrderUpdateEvent } from "./models/OrderUpdateEvent.js";
+import { PatchOrderRequest } from "./models/PatchOrderRequest.js";
+import { PlaceOrderRequest } from "./models/PlaceOrderRequest.js";
 
 export abstract class ITradeAdapter {
   abstract get exchanges(): Exchange[];

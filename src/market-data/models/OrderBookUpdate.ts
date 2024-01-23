@@ -1,4 +1,4 @@
-import { OrderBookEntry } from "../OrderBook";
+import { OrderBookEntry } from "../OrderBook.js";
 
 export enum OrderBookUpdateType {
   Replace,

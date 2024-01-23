@@ -1,7 +1,7 @@
-import { OrderUpdateEvent } from "../exchanges/models/OrderUpdateEvent";
-import { PlaceOrderRequest } from "../exchanges/models/PlaceOrderRequest";
-import { Order } from "../models/Order";
-import { OrderStatus } from "../models/OrderStatus";
+import { OrderUpdateEvent } from "../exchanges/models/OrderUpdateEvent.js";
+import { PlaceOrderRequest } from "../exchanges/models/PlaceOrderRequest.js";
+import { Order } from "../models/Order.js";
+import { OrderStatus } from "../models/OrderStatus.js";
 
 export class OpenOrders {
   constructor(private orderMap: Map<string, Order>) {}
@@ -17,7 +17,7 @@ export class OpenOrders {
   trackOrder(placeOrderRequest: PlaceOrderRequest) {
     const order: Order = {
       clientOrderId: placeOrderRequest.clientOrderId,
-      symbol: placeOrderRequest.symbol,
+      assetId: placeOrderRequest.assetId,
       qty: placeOrderRequest.qty,
       filledQty: 0,
       filledAvgPrice: 0,

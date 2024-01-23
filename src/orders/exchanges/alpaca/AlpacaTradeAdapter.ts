@@ -1,13 +1,14 @@
-import Alpaca from "@alpacahq/alpaca-trade-api";
-import { Exchange } from "../../../algo-engine/models/Exchange";
-import { ITradeAdapter } from "../ITradeAdapter";
-import { AbortOrderRequest } from "../models/AbortOrderRequest";
-import { PatchOrderRequest } from "../models/PatchOrderRequest";
-import { PlaceOrderRequest } from "../models/PlaceOrderRequest";
-import { AlpacaOrderUpdate } from "./entities/AlpacaOrderUpdate";
-import { AlpacaOrderUpdateMapper } from "./mappers/AlpacaOrderUpdateMapper";
-import { AlpacaPatchOrderMapper } from "./mappers/AlpacaPatchOrderMapper";
-import { AlpacaPlaceOrderMapper } from "./mappers/AlpacaPlaceOrderMapper";
+import Alpaca from "@alpacahq/alpaca-trade-api/dist/alpaca-trade-api.js";
+import { Asset } from "../../../algo-engine/models/Asset.js";
+import { Exchange } from "../../../algo-engine/models/Exchange.js";
+import { ITradeAdapter } from "../ITradeAdapter.js";
+import { AbortOrderRequest } from "../models/AbortOrderRequest.js";
+import { PatchOrderRequest } from "../models/PatchOrderRequest.js";
+import { PlaceOrderRequest } from "../models/PlaceOrderRequest.js";
+import { AlpacaOrderUpdate } from "./entities/AlpacaOrderUpdate.js";
+import { AlpacaOrderUpdateMapper } from "./mappers/AlpacaOrderUpdateMapper.js";
+import { AlpacaPatchOrderMapper } from "./mappers/AlpacaPatchOrderMapper.js";
+import { AlpacaPlaceOrderMapper } from "./mappers/AlpacaPlaceOrderMapper.js";
 
 export class AlpacaTradeAdapter extends ITradeAdapter {
   override get exchanges() {
@@ -15,11 +16,16 @@ export class AlpacaTradeAdapter extends ITradeAdapter {
   }
 
   private orderUpdateMapper = new AlpacaOrderUpdateMapper();
-  private placeOrderMapper = new AlpacaPlaceOrderMapper();
+  private placeOrderMapper: AlpacaPlaceOrderMapper;
   private patchOrderMapper = new AlpacaPatchOrderMapper();
 
-  private constructor(private alpaca: Alpaca) {
+  private constructor(
+    private alpaca: Alpaca,
+    private assets: Map<string, Asset>
+  ) {
     super();
+
+    this.placeOrderMapper = AlpacaPlaceOrderMapper.create(assets);
   }
 
   private async init() {
@@ -34,9 +40,12 @@ export class AlpacaTradeAdapter extends ITradeAdapter {
         reject(err);
       });
       this.alpaca.trade_ws.onOrderUpdate((orderUpdate: AlpacaOrderUpdate) => {
-        this.onOrderUpdate?.(
-          this.orderUpdateMapper.fromAlpacaOrderUpdate(orderUpdate)
-        );
+        console.log("Order update received", orderUpdate);
+        const mapped =
+          this.orderUpdateMapper.fromAlpacaOrderUpdate(orderUpdate);
+        if (mapped != null) {
+          this.onOrderUpdate?.(mapped);
+        }
       });
       this.alpaca.trade_ws.onStateChange((state: {}) => {
         console.log("State change received", state);
@@ -48,8 +57,8 @@ export class AlpacaTradeAdapter extends ITradeAdapter {
     });
   }
 
-  static async create(alpaca: Alpaca) {
-    const inst = new AlpacaTradeAdapter(alpaca);
+  static async create(alpaca: Alpaca, assets: Map<string, Asset>) {
+    const inst = new AlpacaTradeAdapter(alpaca, assets);
     return await inst.init();
   }
 
