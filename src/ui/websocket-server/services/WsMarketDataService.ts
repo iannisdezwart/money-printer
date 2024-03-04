@@ -1,4 +1,5 @@
 import { Socket, Server as SocketIoServer } from "socket.io";
+import { MomentumAnalyzer } from "../../../analysis/analyzers/MomentumAnalyzer.js";
 import {
   MarketDataService,
   QuoteEvent,
@@ -30,6 +31,13 @@ export class WsMarketDataService {
           .emit("trade", trade);
       }
     );
+    this.marketDataService.analysisEmitter.addEventListener((analysis) => {
+      if (analysis.analyzerId === MomentumAnalyzer.name) {
+        this.socketIoServer
+          .to(`market-data:${analysis.assetId}`)
+          .emit("analysis", analysis);
+      }
+    });
 
     return this;
   }

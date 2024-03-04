@@ -1,10 +1,10 @@
 import { MarketDataService } from "../market-data/MarketDataService.js";
 import { OrderService } from "../orders/OrderService.js";
 import { PositionService } from "../positions/PositionService.js";
-import { Algo } from "./Algo.js";
+import { IAlgo } from "./Algo.js";
 
 export class AlgoEngine {
-  private algos: Algo[] = [];
+  private algos: IAlgo[] = [];
 
   constructor(
     private marketDataService: MarketDataService,
@@ -18,7 +18,7 @@ export class AlgoEngine {
 
       this.algos.forEach((algo) => {
         algo
-          .decide(orderUpdates, this.marketDataService, this.positionService)
+          .decide(orderUpdates, this.positionService)
           .forEach((decision) => {
             this.orderService.perform(decision);
           });
@@ -26,7 +26,7 @@ export class AlgoEngine {
     }, 250);
   }
 
-  addAlgo(algo: Algo) {
+  addAlgo(algo: IAlgo) {
     this.algos.push(algo);
   }
 }

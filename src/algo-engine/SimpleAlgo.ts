@@ -1,8 +1,9 @@
+import { MomentumAnalyzer } from "../analysis/analyzers/MomentumAnalyzer.js";
 import { MarketDataService } from "../market-data/MarketDataService.js";
 import { OrderUpdateEvent } from "../orders/exchanges/models/OrderUpdateEvent.js";
 import { OrderStatus } from "../orders/models/OrderStatus.js";
 import { PositionService } from "../positions/PositionService.js";
-import { Algo } from "./Algo.js";
+import { IAlgo } from "./Algo.js";
 import { AlgoDecision } from "./AlgoDecision.js";
 
 enum SimpleAlgoState {
@@ -37,37 +38,84 @@ export type SimpleAlgoParams = {
   };
 };
 
-export class SimpleAlgo extends Algo {
-  constructor(private assetId: string, private params: SimpleAlgoParams) {
-    super();
-  }
-
+export class SimpleAlgo extends IAlgo {
   private state: SimpleAlgoState = SimpleAlgoState.Out;
 
   private longClientOrderId?: string;
   private shortClientOrderId?: string;
   private position?: "long" | "short";
 
+  private constructor(
+    private assetId: string,
+    private params: SimpleAlgoParams,
+    private marketDataService: MarketDataService
+  ) {
+    super();
+  }
+
+  private async init() {
+    const analyzer10s = await MomentumAnalyzer.create(
+      this.marketDataService,
+      [
+        {
+          timeWindowMs: 1000 * 10, // 10 seconds
+          curveFitOrderMap: [
+            { minNumQuotes: 6, order: 1 },
+            { minNumQuotes: 12, order: 2 },
+            { minNumQuotes: 40, order: 3 },
+            { minNumQuotes: 80, order: 4 },
+          ],
+        },
+      ],
+      this.assetId,
+      this.params.maxSpread
+    );
+
+    const analyzer1m = await MomentumAnalyzer.create(
+      this.marketDataService,
+      [
+        {
+          timeWindowMs: 1000 * 60, // 1 minute
+          curveFitOrderMap: [
+            { minNumQuotes: 12, order: 1 },
+            { minNumQuotes: 40, order: 2 },
+            { minNumQuotes: 140, order: 3 },
+            { minNumQuotes: 250, order: 4 },
+          ],
+        },
+      ],
+      this.assetId,
+      this.params.maxSpread
+    );
+
+    analyzer10s.onAnalysis((analysis) => {});
+  }
+
+  static async create(
+    assetId: string,
+    params: SimpleAlgoParams,
+    marketDataService: MarketDataService
+  ) {
+    return new SimpleAlgo(assetId, params, marketDataService).init();
+  }
+
   override decide(
     orderUpdates: OrderUpdateEvent[],
-    marketDataService: MarketDataService,
     positionService: PositionService
   ): AlgoDecision[] {
     switch (this.state) {
       case SimpleAlgoState.Out:
-        return this.decideOut(orderUpdates, marketDataService, positionService);
+        return this.decideOut(orderUpdates, positionService);
       case SimpleAlgoState.Entering:
         return this.decideEntering(
           orderUpdates,
-          marketDataService,
           positionService
         );
       case SimpleAlgoState.In:
-        return this.decideIn(orderUpdates, marketDataService, positionService);
+        return this.decideIn(orderUpdates, positionService);
       case SimpleAlgoState.Exiting:
         return this.decideExiting(
           orderUpdates,
-          marketDataService,
           positionService
         );
     }
@@ -75,27 +123,8 @@ export class SimpleAlgo extends Algo {
 
   private decideOut(
     orderUpdates: OrderUpdateEvent[],
-    marketDataService: MarketDataService,
     positionService: PositionService
   ) {
-    // const TRADE_QTY = 1;
-
-    // const JUMP_SIZE = 0.06;
-    // const JUMP_CONT_UP_OFFS = 0.03;
-    // const JUMP_CONT_UP_SIZE = 0.03;
-    // const JUMP_CONT_UP_STOP = 0.03;
-    // const JUMP_CONT_DN_OFFS = 0.03;
-    // const JUMP_CONT_DN_SIZE = 0.03;
-    // const JUMP_CONT_DN_STOP = 0.03;
-
-    // const FALL_SIZE = 0.06;
-    // const FALL_CONT_UP_OFFS = 0.03;
-    // const FALL_CONT_UP_SIZE = 0.03;
-    // const FALL_CONT_UP_STOP = 0.03;
-    // const FALL_CONT_DN_OFFS = 0.03;
-    // const FALL_CONT_DN_SIZE = 0.03;
-    // const FALL_CONT_DN_STOP = 0.03;
-
     const quotes = marketDataService
       .getLatestQuotes(
         this.assetId,
@@ -174,7 +203,6 @@ export class SimpleAlgo extends Algo {
 
   private decideEntering(
     orderUpdates: OrderUpdateEvent[],
-    marketDataService: MarketDataService,
     positionService: PositionService
   ) {
     if (orderUpdates.length === 0) {
@@ -246,7 +274,6 @@ export class SimpleAlgo extends Algo {
 
   private decideIn(
     orderUpdates: OrderUpdateEvent[],
-    marketDataService: MarketDataService,
     positionService: PositionService
   ) {
     if (orderUpdates.length === 0) {
@@ -260,7 +287,6 @@ export class SimpleAlgo extends Algo {
 
   private decideExiting(
     orderUpdates: OrderUpdateEvent[],
-    marketDataService: MarketDataService,
     positionService: PositionService
   ) {
     if (orderUpdates.length === 0) {

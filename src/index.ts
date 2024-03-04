@@ -6,10 +6,14 @@ import { SimpleAlgo } from "./algo-engine/SimpleAlgo.js";
 import { Asset } from "./algo-engine/models/Asset.js";
 import { Exchange } from "./algo-engine/models/Exchange.js";
 import { MarketDataService } from "./market-data/MarketDataService.js";
+import { IMarketDataAdapter } from "./market-data/exchanges/IMarketDataAdapter.js";
 import { AlpacaCryptoMarketDataAdapter } from "./market-data/exchanges/alpaca-crypto/AlpacaCryptoMarketDataAdapter.js";
 import { AlpacaUsEquityMarketDataAdapter } from "./market-data/exchanges/alpaca-us-equity/AlpacaUsEquityMarketDataAdapter.js";
+import { AlpacaUsEquityMarketDataRealtimeWebsocketStream } from "./market-data/exchanges/alpaca-us-equity/data-stream/AlpacaUsEquityMarketDataRealtimeWebsocketStream.js";
+import { AlpacaUsEquityMarketDataReplayDataStream } from "./market-data/exchanges/alpaca-us-equity/data-stream/AlpacaUsEquityMarketDataReplayDataStream.js";
 import { AssetConfiguration } from "./models/AssetConfiguration.js";
 import { OrderService } from "./orders/OrderService.js";
+import { ITradeAdapter } from "./orders/exchanges/ITradeAdapter.js";
 import { AlpacaTradeAdapter } from "./orders/exchanges/alpaca/AlpacaTradeAdapter.js";
 import { PositionService } from "./positions/PositionService.js";
 import { UiServer } from "./ui/UiServer.js";
@@ -42,18 +46,37 @@ const main = async () => {
   });
   const assetMap = new Map(assets.map((asset) => [asset.id, asset]));
 
-  const alpacaTradeAdapter = await AlpacaTradeAdapter.create(alpaca, assetMap);
-  const orderService = await OrderService.create(
-    [alpacaTradeAdapter],
-    assetMap
-  );
+  const tradeAdapters: ITradeAdapter[] = [];
 
-  const alpacaCryptoMarketDataAdapter =
-    await AlpacaCryptoMarketDataAdapter.create(alpaca, assets);
-  const alpacaUsEquityMarketDataAdapter =
-    await AlpacaUsEquityMarketDataAdapter.create(alpaca, assets);
+  if (process.env.ALPACA_TRADE_ADAPTER_ENABLED) {
+    tradeAdapters.push(await AlpacaTradeAdapter.create(alpaca, assetMap));
+  }
+
+  const orderService = await OrderService.create(tradeAdapters, assetMap);
+
+  const marketDataAdapters: IMarketDataAdapter[] = [];
+
+  if (process.env.ALPACA_CRYPTO_MARKET_DATA_ADAPTER_ENABLED) {
+    marketDataAdapters.push(
+      await AlpacaCryptoMarketDataAdapter.create(alpaca, assets)
+    );
+  }
+
+  if (process.env.ALPACA_US_EQUITY_MARKET_DATA_APAPTER_ENABLED) {
+    const source = process.env.ALPACA_US_EQUITY_MARKET_DATA_REPLAY_ENABLED
+      ? await AlpacaUsEquityMarketDataReplayDataStream.create(
+          alpaca,
+          new Date("2024-01-23T14:30:00.000Z")
+        )
+      : await AlpacaUsEquityMarketDataRealtimeWebsocketStream.create(alpaca);
+
+    marketDataAdapters.push(
+      await AlpacaUsEquityMarketDataAdapter.create(source, assets)
+    );
+  }
+
   const marketDataService = await MarketDataService.create(
-    [alpacaCryptoMarketDataAdapter, alpacaUsEquityMarketDataAdapter],
+    marketDataAdapters,
     assets
   );
 
@@ -64,60 +87,32 @@ const main = async () => {
     positionService
   );
 
-  // orderService.placeOrder({
-  //   symbol: symbolBtcUsd,
-  //   qty: 0.1,
-  //   side: OrderSide.Buy,
-  //   clientOrderId: `init-${crypto.randomUUID()}`,
-  //   timeInForce: OrderTimeInForce.GoodTillCancel,
-  //   type: OrderType.Market,
-  // });
-
-  // algoEngine.addAlgo(
-  //   new SimpleAlgo(symbolBtcUsd, {
-  //     lookbackPeriodMs: 1000 * 60, // 1 minute
-  //     enterParams: {
-  //       tradeQty: 0.01,
-  //       jumpSize: 30,
-  //       jumpContUpOffs: 15,
-  //       jumpContUpSize: 15,
-  //       jumpContUpStop: 15,
-  //       jumpContDnOffs: 15,
-  //       jumpContDnSize: 15,
-  //       jumpContDnStop: 15,
-  //       fallSize: 30,
-  //       fallContUpOffs: 15,
-  //       fallContUpSize: 15,
-  //       fallContUpStop: 15,
-  //       fallContDnOffs: 15,
-  //       fallContDnSize: 15,
-  //       fallContDnStop: 15,
-  //     },
-  //   })
-  // );
-
   algoEngine.addAlgo(
-    new SimpleAlgo("AAPL", {
-      lookbackPeriodMs: 1000 * 10, // 10 seconds
-      maxSpread: 0.05,
-      enterParams: {
-        tradeQty: 1,
-        jumpSize: 0.08,
-        jumpContUpOffs: 0.06,
-        jumpContUpSize: 0.04,
-        jumpContUpStop: 0.1,
-        jumpContDnOffs: 0.06,
-        jumpContDnSize: 0.04,
-        jumpContDnStop: 0.1,
-        fallSize: 0.08,
-        fallContUpOffs: 0.06,
-        fallContUpSize: 0.04,
-        fallContUpStop: 0.1,
-        fallContDnOffs: 0.06,
-        fallContDnSize: 0.04,
-        fallContDnStop: 0.1,
+    await SimpleAlgo.create(
+      "AAPL",
+      {
+        lookbackPeriodMs: 1000 * 10, // 10 seconds
+        maxSpread: 0.05,
+        enterParams: {
+          tradeQty: 1,
+          jumpSize: 0.08,
+          jumpContUpOffs: 0.06,
+          jumpContUpSize: 0.04,
+          jumpContUpStop: 0.1,
+          jumpContDnOffs: 0.06,
+          jumpContDnSize: 0.04,
+          jumpContDnStop: 0.1,
+          fallSize: 0.08,
+          fallContUpOffs: 0.06,
+          fallContUpSize: 0.04,
+          fallContUpStop: 0.1,
+          fallContDnOffs: 0.06,
+          fallContDnSize: 0.04,
+          fallContDnStop: 0.1,
+        },
       },
-    })
+      marketDataService
+    )
   );
 
   algoEngine.run();

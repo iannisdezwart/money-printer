@@ -2,3 +2,4 @@ node_modules/
 *.js
 AlpacaCryptoAssets.json
 env/
+ui/react-app/src/www/
